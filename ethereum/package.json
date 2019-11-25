@@ -1,0 +1,19 @@
+{
+  "name": "blockchain",
+  "version": "1.0.0",
+  "description": "Blockchain part of FlightSurety project for Udacity",
+  "main": "index.js",
+  "scripts": {
+    "start": "ganache-cli",
+    "compile": "truffle compile",
+    "migrate": "truffle migrate",
+    "test": "truffle test"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "ganache-cli": "^6.7.0",
+    "openzeppelin-solidity": "^2.4.0",
+    "truffle": "^5.1.1"
+  }
+}
