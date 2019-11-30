@@ -2,18 +2,24 @@
   "name": "blockchain",
   "version": "1.0.0",
   "description": "Blockchain part of FlightSurety project for Udacity",
-  "main": "index.js",
+  "author": "Nail Khafizov <854297992c@gmail.com>",
+  "license": "ISC",
   "scripts": {
     "start": "ganache-cli",
     "compile": "truffle compile",
     "migrate": "truffle migrate",
-    "test": "truffle test"
+    "test": "truffle test",
+    "format": "prettier --write contracts/*.sol && prettier --write test/*.js"
   },
-  "author": "",
-  "license": "ISC",
   "devDependencies": {
+    "@openzeppelin/contracts": "^2.4.0",
+    "bignumber.js": "^9.0.0",
     "ganache-cli": "^6.7.0",
-    "openzeppelin-solidity": "^2.4.0",
-    "truffle": "^5.1.1"
+    "prettier": "^1.19.1",
+    "prettier-plugin-solidity": "^1.0.0-alpha.34",
+    "solhint": "^2.3.0",
+    "truffle": "^5.1.1",
+    "truffle-plugin-solhint": "0.0.6",
+    "web3": "^1.2.4"
   }
 }

@@ -1,186 +1,185 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.0;
 
-import "../node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts/lifecycle/Pausable.sol";
+import "./AddressSets.sol";
 
 contract FlightSuretyData {
     using SafeMath for uint256;
+    using AddressSets for AddressSets.AddressSet;
 
-    /********************************************************************************************/
-    /*                                       DATA VARIABLES                                     */
-    /********************************************************************************************/
-
-    address private contractOwner;                                      // Account used to deploy contract
-    bool private operational = true;                                    // Blocks all state changes throughout the contract if false
-
-    /********************************************************************************************/
-    /*                                       EVENT DEFINITIONS                                  */
-    /********************************************************************************************/
-
+    mapping(address => Airline) private airlines;
 
     /**
-    * @dev Constructor
-    *      The deploying account becomes contractOwner
-    */
-    constructor
-                                (
-                                ) 
-                                public 
-    {
-        contractOwner = msg.sender;
-    }
-
-    /********************************************************************************************/
-    /*                                       FUNCTION MODIFIERS                                 */
-    /********************************************************************************************/
-
-    // Modifiers help avoid duplication of code. They are typically used to validate something
-    // before a function is allowed to be executed.
+     * @dev        Count of registered airlines
+     */
+    uint256 private countRegisteredAirlines = 0;
 
     /**
-    * @dev Modifier that requires the "operational" boolean variable to be "true"
-    *      This is used on all state changing functions to pause the contract in 
-    *      the event there is an issue that needs to be fixed
-    */
-    modifier requireIsOperational() 
-    {
-        require(operational, "Contract is currently not operational");
-        _;  // All modifiers require an "_" which indicates where the function body will be added
+     * @title Airline representation state
+     */
+    struct Airline {
+        bool exists;
+        bool registered;
+        bool funded;
+        AddressSets.AddressSet approvals;
     }
 
-    /**
-    * @dev Modifier that requires the "ContractOwner" account to be the function caller
-    */
-    modifier requireContractOwner()
-    {
-        require(msg.sender == contractOwner, "Caller is not contract owner");
-        _;
-    }
+    event RegistrationAirlineRequest(
+        address indexed airlineAddress,
+        bool registered
+    );
 
-    /********************************************************************************************/
-    /*                                       UTILITY FUNCTIONS                                  */
-    /********************************************************************************************/
-
-    /**
-    * @dev Get operating status of contract
-    *
-    * @return A bool that is the current operating status
-    */      
-    function isOperational() 
-                            public 
-                            view 
-                            returns(bool) 
-    {
-        return operational;
-    }
-
-
-    /**
-    * @dev Sets contract operations on/off
-    *
-    * When operational mode is disabled, all write transactions except for this one will fail
-    */    
-    function setOperatingStatus
-                            (
-                                bool mode
-                            ) 
-                            external
-                            requireContractOwner 
-    {
-        operational = mode;
-    }
-
-    /********************************************************************************************/
-    /*                                     SMART CONTRACT FUNCTIONS                             */
-    /********************************************************************************************/
-
-   /**
-    * @dev Add an airline to the registration queue
-    *      Can only be called from FlightSuretyApp contract
-    *
-    */   
-    function registerAirline
-                            (   
-                            )
-                            external
-                            pure
-    {
-    }
-
-
-   /**
-    * @dev Buy insurance for a flight
-    *
-    */   
-    function buy
-                            (                             
-                            )
-                            external
-                            payable
-    {
-
-    }
-
-    /**
-     *  @dev Credits payouts to insurees
-    */
-    function creditInsurees
-                                (
-                                )
-                                external
-                                pure
-    {
-    }
-    
-
-    /**
-     *  @dev Transfers eligible payout funds to insuree
-     *
-    */
-    function pay
-                            (
-                            )
-                            external
-                            pure
-    {
-    }
-
-   /**
-    * @dev Initial funding for the insurance. Unless there are too many delayed flights
-    *      resulting in insurance payouts, the contract should be self-sustaining
-    *
-    */   
-    function fund
-                            (   
-                            )
-                            public
-                            payable
-    {
-    }
-
-    function getFlightKey
-                        (
-                            address airline,
-                            string memory flight,
-                            uint256 timestamp
-                        )
-                        pure
-                        internal
-                        returns(bytes32) 
-    {
-        return keccak256(abi.encodePacked(airline, flight, timestamp));
+    constructor() public {
+        createNewAirline(msg.sender);
     }
 
     /**
     * @dev Fallback function for funding smart contract.
     *
     */
-    function() 
-                            external 
-                            payable 
-    {
+    function() external payable {
         fund();
     }
 
+    /**
+     * @dev        Register or approve airline
+     * @param      airlineAddress  The airline address
+     */
+    function registerAirline(address airlineAddress) external {
+        require(
+            airlines[msg.sender].registered,
+            "Sender must be registered Airline"
+        );
+        require(
+            !airlines[airlineAddress].registered,
+            "Airline already registered"
+        );
 
+        bool exists = airlines[airlineAddress].exists;
+
+        if (exists) {
+            approveAirline(airlineAddress);
+        } else {
+            createNewAirline(airlineAddress);
+        }
+
+        if (airlines[airlineAddress].registered) {
+            countRegisteredAirlines = countRegisteredAirlines.add(1);
+        }
+
+        emit RegistrationAirlineRequest(
+            airlineAddress,
+            airlines[airlineAddress].registered
+        );
+    }
+
+    /**
+    * @dev Buy insurance for a flight
+    *
+    */
+    function buy() external payable {}
+
+    /**
+     *  @dev Credits payouts to insurees
+    */
+    function creditInsurees() external view {}
+
+    /**
+     *  @dev Transfers eligible payout funds to insuree
+     *
+    */
+    function pay() external view {}
+
+    /**
+    * @dev Initial funding for the insurance. Unless there are too many delayed flights
+    *      resulting in insurance payouts, the contract should be self-sustaining
+    *
+    */
+
+    function fund() public payable {}
+
+    function getFlightKey(
+        address airline,
+        string memory flight,
+        uint256 timestamp
+    ) internal view returns (bytes32) {
+        return keccak256(abi.encodePacked(airline, flight, timestamp));
+    }
+
+    /**
+     * @dev        Until fifth registered airline by default new airline
+     * registered
+     * @param      airlineAddress  The airline address
+     */
+    function createNewAirline(address airlineAddress) private {
+        require(
+            !airlines[airlineAddress].exists,
+            "Airline exists, can't create new"
+        );
+
+        bool defaultRegistered;
+        if (countRegisteredAirlines < 5) {
+            defaultRegistered = true;
+        } else {
+            defaultRegistered = false;
+        }
+
+        Airline memory newAirline = Airline({
+            exists: true,
+            funded: false,
+            approvals: AddressSets.AddressSet({
+                size: 0
+            }),
+            registered: defaultRegistered
+        });
+
+        airlines[airlineAddress] = newAirline;
+    }
+
+    /**
+     * @dev        Registration of fifth and subsequent airlines requires
+     multy-part consensus of 50% registered airlines
+     * @param      airlineAddress  The airline address
+     */
+    function approveAirline(address airlineAddress) private {
+        require(
+            airlines[msg.sender].registered,
+            "Sender is not Airline, can't approve"
+        );
+        require(
+            airlines[airlineAddress].exists,
+            "Airline is not exists, can't approve"
+        );
+        require(
+            !airlines[airlineAddress].registered,
+            "Airline already registered, can't approve"
+        );
+        require(
+            !airlines[airlineAddress].approvals.containsAddress(airlineAddress),
+            "Sender has already approved this airline"
+        );
+
+        uint256 actualCountApprovals = airlines[airlineAddress]
+            .approvals
+            .countAdresses();
+
+        uint256 requiredCountApprovals;
+        if (countRegisteredAirlines % 2 == 0) {
+            requiredCountApprovals = countRegisteredAirlines.div(2);
+        } else {
+            requiredCountApprovals = countRegisteredAirlines.div(2).add(1);
+        }
+
+        assert(actualCountApprovals < requiredCountApprovals);
+
+        airlines[airlineAddress].approvals.addAddress(airlineAddress);
+
+        if (
+            airlines[airlineAddress].approvals.countAdresses() == requiredCountApprovals
+        ) {
+            airlines[airlineAddress].registered = true;
+        }
+    }
 }
-
