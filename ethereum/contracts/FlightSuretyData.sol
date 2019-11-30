@@ -24,12 +24,15 @@ contract FlightSuretyData {
         bool registered;
         bool funded;
         AddressSets.AddressSet approvals;
+        uint256 balance;
     }
 
     event RegistrationAirlineRequest(
         address indexed airlineAddress,
         bool registered
     );
+
+    event AirlineFunded(address index airlineAddress);
 
     constructor() public {
         createNewAirline(msg.sender);
@@ -93,12 +96,28 @@ contract FlightSuretyData {
     function pay() external view {}
 
     /**
-    * @dev Initial funding for the insurance. Unless there are too many delayed flights
-    *      resulting in insurance payouts, the contract should be self-sustaining
-    *
-    */
+     * @dev Initial funding for the insurance. Unless there are too many delayed flights
+     *      resulting in insurance payouts, the contract should be self-sustaining
+     */
+    function fund() public payable {
+        require(
+            airlines[msg.sender].registered,
+            "Sender is not registered Airline"
+        );
+        require(
+            !airlines[msg.sender].funded,
+            "Sender is already funded"
+        );
+        require(
+            msg.value == 10 ether,
+            "Funding value must be 10 ether"
+        );
 
-    function fund() public payable {}
+        airlines[msg.sender].funded = true;
+        airlines[msg.sender].balance = msg.value;
+
+        emit AirlineFunded(msg.sender);
+    }
 
     function getFlightKey(
         address airline,
