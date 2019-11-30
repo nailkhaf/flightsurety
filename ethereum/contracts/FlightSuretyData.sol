@@ -62,10 +62,10 @@ contract FlightSuretyData {
 
         bool exists = airlines[airlineAddress].exists;
 
-        if (exists) {
-            approveAirline(airlineAddress);
-        } else {
+        if (!exists) {
             createNewAirline(airlineAddress);
+        } else {
+            approveAirline(airlineAddress);
         }
 
         if (airlines[airlineAddress].registered) {
@@ -79,21 +79,30 @@ contract FlightSuretyData {
     }
 
     /**
-    * @dev Buy insurance for a flight
-    *
-    */
-    function buy() external payable {}
+     * @dev Buy insurance for a flight
+     */
+    function buy() external payable {
+        require(
+             msg.value <= 1 ether,
+             "Insurance costs up to 1 ether"
+        );
+
+
+    }
 
     /**
      *  @dev Credits payouts to insurees
-    */
-    function creditInsurees() external view {}
+     */
+    function creditInsurees() external view {
+
+    }
 
     /**
      *  @dev Transfers eligible payout funds to insuree
-     *
-    */
-    function pay() external view {}
+     */
+    function pay() external view {
+
+    }
 
     /**
      * @dev Initial funding for the insurance. Unless there are too many delayed flights
@@ -123,16 +132,20 @@ contract FlightSuretyData {
         address airline,
         string memory flight,
         uint256 timestamp
-    ) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(airline, flight, timestamp));
+    ) private pure returns (bytes32) {
+        return keccak256(abi.encodePacked(airline, timestamp, flight));
     }
 
     /**
-     * @dev        Until fifth registered airline by default new airline
-     * registered
+     * @dev        Only existing airline can register a new airline until there
+     * at least four airlines registered
      * @param      airlineAddress  The airline address
      */
     function createNewAirline(address airlineAddress) private {
+        require(
+            airlines[msg.sender].registered,
+            "Sender must be registered Airline, can't create new"
+        );
         require(
             !airlines[airlineAddress].exists,
             "Airline exists, can't create new"
