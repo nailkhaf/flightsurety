@@ -5,11 +5,34 @@ import "@openzeppelin/contracts/ownership/Ownable.sol";
 import "@openzeppelin/contracts/lifecycle/Pausable.sol";
 import "./AddressSets.sol";
 
-contract FlightSuretyData {
+contract FlightSuretyData is Ownable, Pausable {
     using SafeMath for uint256;
     using AddressSets for AddressSets.AddressSet;
 
+    enum FlightStatus {
+        UNKNOWN,
+        ON_TIME,
+        LATE_AIRLINE,
+        LATE_WEATHER,
+        LATE_TECHNICAL,
+        LATE_OTHER
+    }
+
     mapping(address => Airline) private airlines;
+
+    mapping(bytes32 => Flight) private flights;
+
+    mapping(address => bool) private authorizedApps;
+
+    event AirlineExisted(address indexed airline);
+
+    event AirlineApproved(address indexed airline, address approver);
+
+    event AirlineRegistered(address indexed airline);
+
+    event AirlineFounded(address indexed airline);
+
+    event AirlineDeposit(address indexed airline, uint256 value);
 
     /**
      * @dev        Count of registered airlines
@@ -17,7 +40,7 @@ contract FlightSuretyData {
     uint256 private countRegisteredAirlines = 0;
 
     /**
-     * @title Airline representation state
+     * @title
      */
     struct Airline {
         bool exists;
@@ -27,191 +50,213 @@ contract FlightSuretyData {
         uint256 balance;
     }
 
-    event RegistrationAirlineRequest(
-        address indexed airlineAddress,
-        bool registered
-    );
+    /**
+     * @title
+     */
+    struct Flight {
+        address airline;
+        bool registered;
+        uint8 statusCode;
+        uint256 updatedTimestamp;
+    }
 
-    event AirlineFunded(address index airlineAddress);
+    constructor(address firtsAirline) public {
+        _newAirline(firtsAirline);
+        airlines[firtsAirline].registered = true;
+    }
 
-    constructor() public {
-        createNewAirline(msg.sender);
+    modifier requireAuthorizedApp() {
+        require(authorizedApps[msg.sender], "App is not authorized");
+        _;
+    }
+
+    modifier requireAirlineExist(address airline) {
+        require(airlines[airline].exists, "Airline isn't exist");
+        _;
     }
 
     /**
-    * @dev Fallback function for funding smart contract.
-    *
-    */
+     * @dev Fallback function for funding smart contract.
+     */
     function() external payable {
-        fund();
+        revert("Data contract doesn't support fallback function");
     }
 
-    /**
-     * @dev        Register or approve airline
-     * @param      airlineAddress  The airline address
-     */
-    function registerAirline(address airlineAddress) external {
-        require(
-            airlines[msg.sender].registered,
-            "Sender must be registered Airline"
-        );
-        require(
-            !airlines[airlineAddress].registered,
-            "Airline already registered"
-        );
-
-        bool exists = airlines[airlineAddress].exists;
-
-        if (!exists) {
-            createNewAirline(airlineAddress);
-        } else {
-            approveAirline(airlineAddress);
-        }
-
-        if (airlines[airlineAddress].registered) {
-            countRegisteredAirlines = countRegisteredAirlines.add(1);
-        }
-
-        emit RegistrationAirlineRequest(
-            airlineAddress,
-            airlines[airlineAddress].registered
-        );
+    function authorizeApp(address app) external onlyOwner {
+        require(!authorizedApps[app], "App already authorized");
+        authorizedApps[app] = true;
     }
 
-    /**
-     * @dev Buy insurance for a flight
-     */
-    function buy() external payable {
-        require(
-             msg.value <= 1 ether,
-             "Insurance costs up to 1 ether"
-        );
+    function newAirline(address airline) external requireAuthorizedApp {
+        require(!airlines[airline].exists, "Airline has already existed");
 
-
+        _newAirline(airline);
     }
 
-    /**
-     *  @dev Credits payouts to insurees
-     */
-    function creditInsurees() external view {
+    function _newAirline(address airline) private {
+        airlines[airline] = Airline({
+            exists: true,
+            funded: false,
+            registered: false,
+            balance: 0,
+            approvals: AddressSets.AddressSet({size: 0})
+        });
 
+        emit AirlineExisted(airline);
     }
 
-    /**
-     *  @dev Transfers eligible payout funds to insuree
-     */
-    function pay() external view {
 
+    function registerAirline(address airline)
+        external
+        requireAuthorizedApp
+        requireAirlineExist(airline)
+    {
+        require(
+            !airlines[airline].registered,
+            "Airline has already registered"
+        );
+
+        airlines[airline].registered = true;
+        countRegisteredAirlines = countRegisteredAirlines.add(1);
+
+        emit AirlineRegistered(airline);
     }
 
-    /**
-     * @dev Initial funding for the insurance. Unless there are too many delayed flights
-     *      resulting in insurance payouts, the contract should be self-sustaining
-     */
-    function fund() public payable {
+    function fundAirline(address airline)
+        external
+        requireAuthorizedApp
+        requireAirlineExist(airline)
+    {
+        require(!airlines[airline].funded, "Airline has already funded");
+
+        airlines[airline].funded = true;
+
+        emit AirlineFounded(airline);
+    }
+
+    function approveAirline(address airline, address approver)
+        external
+        requireAuthorizedApp
+        requireAirlineExist(airline)
+    {
         require(
-            airlines[msg.sender].registered,
-            "Sender is not registered Airline"
-        );
-        require(
-            !airlines[msg.sender].funded,
-            "Sender is already funded"
-        );
-        require(
-            msg.value == 10 ether,
-            "Funding value must be 10 ether"
+            !airlines[airline].approvals.containsAddress(approver),
+            "Approver has already approved airline"
         );
 
-        airlines[msg.sender].funded = true;
-        airlines[msg.sender].balance = msg.value;
+        airlines[airline].approvals.addAddress(approver);
 
-        emit AirlineFunded(msg.sender);
+        emit AirlineApproved(airline, approver);
+    }
+
+    function depositAirlineBalance(address airline)
+        external
+        payable
+        requireAuthorizedApp
+        requireAirlineExist(airline)
+    {
+        require(msg.value > 0, "Deposit value must more than 0");
+
+        airlines[airline].balance = airlines[airline].balance.add(msg.value);
+
+        emit AirlineDeposit(airline, msg.value);
+    }
+
+    function isAirlineExist(address airline)
+        external
+        view
+        requireAuthorizedApp
+        returns (bool)
+    {
+        return airlines[airline].exists;
+    }
+
+    function isAirlineRegistered(address airline)
+        external
+        view
+        requireAuthorizedApp
+        requireAirlineExist(airline)
+        returns (bool)
+    {
+        return airlines[airline].registered;
+    }
+
+    function isAirlineFounded(address airline)
+        external
+        view
+        requireAuthorizedApp
+        requireAirlineExist(airline)
+        returns (bool)
+    {
+        return airlines[airline].funded;
+    }
+
+    function getAirlineCountApprovals(address airline)
+        external
+        view
+        requireAuthorizedApp
+        requireAirlineExist(airline)
+        returns (uint256)
+    {
+        return airlines[airline].approvals.countAdresses();
+    }
+
+    function getAirlineBalance(address airline)
+        external
+        view
+        requireAuthorizedApp
+        requireAirlineExist(airline)
+        returns (uint256)
+    {
+        return airlines[airline].balance;
+    }
+
+    function isAirlineApproved(address airline, address approver)
+        external
+        view
+        requireAuthorizedApp
+        requireAirlineExist(airline)
+        returns (bool)
+    {
+        return airlines[airline].approvals.containsAddress(approver);
+    }
+
+    function getFlight(bytes32 flightKey)
+        external
+        view
+        requireAuthorizedApp
+        requireAirlineExist(airline)
+        returns (
+            address airline,
+            bool registered,
+            uint8 statusCode,
+            uint256 updatedTimestamp
+        )
+    {
+        airline = flights[flightKey].airline;
+        registered = flights[flightKey].registered;
+        statusCode = flights[flightKey].statusCode;
+        updatedTimestamp = flights[flightKey].updatedTimestamp;
+    }
+
+    function getCountRegisteredAirlines()
+        external
+        view
+        requireAuthorizedApp
+        returns (uint256)
+    {
+        return countRegisteredAirlines;
+    }
+
+    function isAuthorizedApp(address app) external view returns (bool) {
+        return authorizedApps[app];
     }
 
     function getFlightKey(
         address airline,
-        string memory flight,
+        string calldata flight,
         uint256 timestamp
-    ) private pure returns (bytes32) {
+    ) external pure returns (bytes32) {
         return keccak256(abi.encodePacked(airline, timestamp, flight));
-    }
-
-    /**
-     * @dev        Only existing airline can register a new airline until there
-     * at least four airlines registered
-     * @param      airlineAddress  The airline address
-     */
-    function createNewAirline(address airlineAddress) private {
-        require(
-            airlines[msg.sender].registered,
-            "Sender must be registered Airline, can't create new"
-        );
-        require(
-            !airlines[airlineAddress].exists,
-            "Airline exists, can't create new"
-        );
-
-        bool defaultRegistered;
-        if (countRegisteredAirlines < 5) {
-            defaultRegistered = true;
-        } else {
-            defaultRegistered = false;
-        }
-
-        Airline memory newAirline = Airline({
-            exists: true,
-            funded: false,
-            approvals: AddressSets.AddressSet({
-                size: 0
-            }),
-            registered: defaultRegistered
-        });
-
-        airlines[airlineAddress] = newAirline;
-    }
-
-    /**
-     * @dev        Registration of fifth and subsequent airlines requires
-     multy-part consensus of 50% registered airlines
-     * @param      airlineAddress  The airline address
-     */
-    function approveAirline(address airlineAddress) private {
-        require(
-            airlines[msg.sender].registered,
-            "Sender is not Airline, can't approve"
-        );
-        require(
-            airlines[airlineAddress].exists,
-            "Airline is not exists, can't approve"
-        );
-        require(
-            !airlines[airlineAddress].registered,
-            "Airline already registered, can't approve"
-        );
-        require(
-            !airlines[airlineAddress].approvals.containsAddress(airlineAddress),
-            "Sender has already approved this airline"
-        );
-
-        uint256 actualCountApprovals = airlines[airlineAddress]
-            .approvals
-            .countAdresses();
-
-        uint256 requiredCountApprovals;
-        if (countRegisteredAirlines % 2 == 0) {
-            requiredCountApprovals = countRegisteredAirlines.div(2);
-        } else {
-            requiredCountApprovals = countRegisteredAirlines.div(2).add(1);
-        }
-
-        assert(actualCountApprovals < requiredCountApprovals);
-
-        airlines[airlineAddress].approvals.addAddress(airlineAddress);
-
-        if (
-            airlines[airlineAddress].approvals.countAdresses() == requiredCountApprovals
-        ) {
-            airlines[airlineAddress].registered = true;
-        }
     }
 }
