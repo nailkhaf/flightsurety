@@ -18,6 +18,10 @@ contract FlightSuretyApp {
 
     FlightSuretyData data;
 
+    event AirlineRegistered(address indexed airline);
+
+    event AirlineFunded(address indexed airline);
+
     constructor(address payable dataContract) public {
         data = FlightSuretyData(dataContract);
     }
@@ -31,24 +35,14 @@ contract FlightSuretyApp {
             data.isAirlineRegistered(msg.sender),
             "Sender must be registered Airline"
         );
-        require(
-            !data.isAirlineRegistered(airline),
-            "Airline already registered"
-        );
 
         bool exists = data.isAirlineExist(airline);
 
         if (!exists) {
             createNewAirline(airline);
-        } else {
-            approveAirline(airline);
         }
 
-        // emit RegistrationAirlineRequest(
-        //     airline,
-        //     airlines[airline].registered
-        // );
-
+        approveAirline(airline);
     }
 
     /**
@@ -64,14 +58,18 @@ contract FlightSuretyApp {
         require(!data.isAirlineFounded(msg.sender), "Sender is already funded");
         require(msg.value == 10 ether, "Funding value must be 10 ether");
 
-
         data.depositAirlineBalance.value(msg.value)(msg.sender);
 
         data.fundAirline(msg.sender);
 
-        // emit AirlineFunded(msg.sender);
-
+        emit AirlineFunded(msg.sender);
     }
+
+    // /**
+    // * @dev Register a future flight for insuring.
+    // *
+    // */
+    // function registerFlight() external {}
 
     /**
      * @dev        Only existing airline can register a new airline until there
@@ -79,19 +77,11 @@ contract FlightSuretyApp {
      */
     function createNewAirline(address airline) private {
         require(
-            data.isAirlineRegistered(airline),
-            "Sender must be registered Airline, can't create new"
-        );
-        require(
             !data.isAirlineExist(airline),
             "Airline exists, can't create new"
         );
 
         data.newAirline(airline);
-
-        if (data.getCountRegisteredAirlines() < 5) {
-            data.registerAirline(airline);
-        }
     }
 
     /**
@@ -120,9 +110,9 @@ contract FlightSuretyApp {
             "Sender has already approved this airline"
         );
 
-        uint256 requiredCountApprovals;
         uint256 countRegisteredAirlines = data.getCountRegisteredAirlines();
 
+        uint256 requiredCountApprovals;
         if (countRegisteredAirlines % 2 == 0) {
             requiredCountApprovals = countRegisteredAirlines.div(2);
         } else {
@@ -133,8 +123,20 @@ contract FlightSuretyApp {
 
         data.approveAirline(airline, msg.sender);
 
-        if (data.getAirlineCountApprovals(airline) == requiredCountApprovals) {
+        if (
+            data.getCountRegisteredAirlines() < 5 ||
+            data.getAirlineCountApprovals(airline) == requiredCountApprovals
+        ) {
             data.registerAirline(airline);
+            emit AirlineRegistered(airline);
+        }
+    }
+
+    function isAirlineRegistered(address airline) external view returns (bool) {
+        if (data.isAirlineExist(airline)) {
+            return data.isAirlineRegistered(airline);
+        } else {
+            return false;
         }
     }
 
@@ -162,12 +164,6 @@ contract FlightSuretyApp {
     // function pay() external view {
 
     // }
-
-    // /**
-    // * @dev Register a future flight for insuring.
-    // *
-    // */
-    // function registerFlight() external pure {}
 
     // /**
     // * @dev Called after oracle has updated flight status

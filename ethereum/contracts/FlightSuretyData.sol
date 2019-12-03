@@ -37,7 +37,7 @@ contract FlightSuretyData is Ownable, Pausable {
     /**
      * @dev        Count of registered airlines
      */
-    uint256 private countRegisteredAirlines = 0;
+    uint256 private countRegisteredAirlines = 1;
 
     /**
      * @title
@@ -104,7 +104,6 @@ contract FlightSuretyData is Ownable, Pausable {
 
         emit AirlineExisted(airline);
     }
-
 
     function registerAirline(address airline)
         external
