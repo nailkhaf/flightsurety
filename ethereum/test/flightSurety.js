@@ -5,9 +5,15 @@ const expect = require("chai").expect;
 
 contract("FlightSurety", async accounts => {
   let config;
+  let flight;
 
   before("setup contract", async () => {
     config = await Test.Config(accounts);
+    flight = {
+      airline: config.firstAirline,
+      flightName: "Flight name",
+      timestamp: "123456789"
+    };
   });
 
   describe("App authorization", async () => {
@@ -86,6 +92,85 @@ contract("FlightSurety", async accounts => {
         await isRegistered(config, sixthAirline),
         "Airline is not registered"
       ).to.equal(true);
+    });
+  });
+
+  describe("Airline funding", async () => {
+    it("Not registered Airline can't fund", async () => {
+      const notRegisteredAirline = config.testAddresses[7];
+      let err = undefined;
+      try {
+        await config.flightSuretyApp.fundAirline({
+          from: notRegisteredAirline,
+          value: web3.utils.toWei("10", "ether")
+        });
+      } catch (e) {
+        err = e;
+      }
+      expect(err, "Not funded Airline was registered").not.equal(undefined);
+    });
+
+    it("Registered Airline can fund", async () => {
+      await config.flightSuretyApp.fundAirline({
+        from: config.firstAirline,
+        value: web3.utils.toWei("10", "ether")
+      });
+
+      const funded = await config.flightSuretyApp.isAirlineFunded(
+        config.firstAirline
+      );
+
+      expect(funded, "Airline not funded").to.equal(true);
+    });
+  });
+
+  describe("Flight registration", async () => {
+    it("Airline can register new flight", async () => {
+      const airline = flight.airline;
+      const flightName = flight.flightName;
+      const timestamp = flight.timestamp;
+
+      const flightKey = await config.flightSuretyApp.registerFlight(
+        flightName,
+        timestamp,
+        {
+          from: airline
+        }
+      );
+
+      const registered = await config.flightSuretyApp.isFlightRegistered(
+        airline,
+        flightName,
+        timestamp
+      );
+
+      expect(registered, "Flight is not registered").to.equal(true);
+    });
+  });
+
+  describe("Purchase insurance", async () => {
+    it("Buy insurance", async () => {
+      const buyer = config.testAddresses[7];
+      const airline = flight.airline;
+      const flightName = flight.flightName;
+      const timestamp = flight.timestamp;
+
+      await config.flightSuretyApp.buyInsurance(
+        airline,
+        flightName,
+        timestamp,
+        {from: buyer, value: web3.utils.toWei("0.5", "ether")}
+      );
+
+      const registered = await config.flightSuretyApp.isInsuranceRegistered(
+        buyer,
+        airline,
+        flightName,
+        timestamp,
+        {from: buyer}
+      );
+
+      expect(registered, "Insurance is not registered").to.be.equal(true);
     });
   });
 });
