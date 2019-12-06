@@ -22,6 +22,14 @@ contract FlightSuretyApp {
 
     event AirlineFunded(address indexed airline);
 
+    event FlightRegistered(
+        address indexed airline,
+        string flight,
+        uint256 timestamp
+    );
+
+    event InsuranceCreated(address indexed owner, bytes32 fligthKey);
+
     constructor(address payable dataContract) public {
         data = FlightSuretyData(dataContract);
     }
@@ -50,12 +58,13 @@ contract FlightSuretyApp {
      * flights resulting in insurance payouts, the contract should be
      * self-sustaining
      */
-    function fund() public payable {
+    function fundAirline() external payable {
+        require(data.isAirlineExist(msg.sender), "Sender is not Airline");
         require(
             data.isAirlineRegistered(msg.sender),
             "Sender is not registered Airline"
         );
-        require(!data.isAirlineFounded(msg.sender), "Sender is already funded");
+        require(!data.isAirlineFunded(msg.sender), "Sender is already funded");
         require(msg.value == 10 ether, "Funding value must be 10 ether");
 
         data.depositAirlineBalance.value(msg.value)(msg.sender);
@@ -65,11 +74,73 @@ contract FlightSuretyApp {
         emit AirlineFunded(msg.sender);
     }
 
+    /**
+    * @dev Register a future flight for insuring.
+    *
+    */
+    function registerFlight(string calldata flight, uint256 timestamp)
+        external
+        returns (bytes32)
+    {
+        require(data.isAirlineExist(msg.sender), "Airline is not exist");
+        require(
+            data.isAirlineRegistered(msg.sender),
+            "Airline is not registered"
+        );
+        require(data.isAirlineFunded(msg.sender), "Airline is not funded");
+        bytes32 flightKey = data.getFlightKey(msg.sender, flight, timestamp);
+        require(
+            !data.isFlightRegistered(flightKey),
+            "Flight already registered"
+        );
+
+        data.newFlight(msg.sender, flight, timestamp);
+
+        emit FlightRegistered(msg.sender, flight, timestamp);
+
+        return flightKey;
+    }
+
+    /**
+     * @dev Buy insurance for a flight
+     */
+    function buyInsurance(
+        address airline,
+        string calldata flight,
+        uint256 timestamp
+    ) external payable {
+        require(data.isAirlineExist(airline), "Airline is not exist");
+        require(
+            data.isAirlineRegistered(airline),
+            "Airline is not registered"
+        );
+        require(data.isAirlineFunded(airline), "Airline is not funded");
+        bytes32 flightKey = data.getFlightKey(airline, flight, timestamp);
+        require(data.isFlightRegistered(flightKey), "Flight is not registered");
+        require(
+            data.getFlightStatusCode(flightKey) == 0,
+            "Fligth is already finished"
+        );
+        require(msg.value <= 1 ether, "Insurance costs up to 1 ether");
+
+        data.newInsurance.value(msg.value)(msg.sender, flightKey);
+
+        emit InsuranceCreated(msg.sender, flightKey);
+    }
+
     // /**
-    // * @dev Register a future flight for insuring.
-    // *
-    // */
-    // function registerFlight() external {}
+    //  *  @dev Credits payouts to insurees
+    //  */
+    // function creditInsurees() external view {
+
+    // }
+
+    // /**
+    //  *  @dev Transfers eligible payout funds to insuree
+    //  */
+    // function pay() external view {
+
+    // }
 
     /**
      * @dev        Only existing airline can register a new airline until there
@@ -140,30 +211,32 @@ contract FlightSuretyApp {
         }
     }
 
-    // /**
-    //  * @dev Buy insurance for a flight
-    //  */
-    // function buy() external payable {
-    //     require(
-    //          msg.value <= 1 ether,
-    //          "Insurance costs up to 1 ether"
-    //     );
+    function isAirlineFunded(address airline) external view returns (bool) {
+        if (data.isAirlineExist(airline)) {
+            return data.isAirlineFunded(airline);
+        } else {
+            return false;
+        }
+    }
 
-    // }
+    function isFlightRegistered(
+        address airline,
+        string calldata fligth,
+        uint256 timestamp
+    ) external view returns (bool) {
+        bytes32 flightKey = data.getFlightKey(airline, fligth, timestamp);
+        return data.isFlightRegistered(flightKey);
+    }
 
-    // /**
-    //  *  @dev Credits payouts to insurees
-    //  */
-    // function creditInsurees() external view {
-
-    // }
-
-    // /**
-    //  *  @dev Transfers eligible payout funds to insuree
-    //  */
-    // function pay() external view {
-
-    // }
+    function isInsuranceRegistered(
+        address owner,
+        address airline,
+        string calldata flightName,
+        uint256 timestamp
+    ) external view returns (bool) {
+        bytes32 flightKey = data.getFlightKey(airline, flightName, timestamp);
+        return data.isInsuranceRegistered(owner, flightKey);
+    }
 
     // /**
     // * @dev Called after oracle has updated flight status

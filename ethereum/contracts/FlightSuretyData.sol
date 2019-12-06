@@ -9,20 +9,22 @@ contract FlightSuretyData is Ownable, Pausable {
     using SafeMath for uint256;
     using AddressSets for AddressSets.AddressSet;
 
-    enum FlightStatus {
-        UNKNOWN,
-        ON_TIME,
-        LATE_AIRLINE,
-        LATE_WEATHER,
-        LATE_TECHNICAL,
-        LATE_OTHER
+    struct Airline {
+        bool exists;
+        bool registered;
+        bool funded;
+        AddressSets.AddressSet approvals;
+        uint256 balance;
     }
+
+    mapping(address => bool) private authorizedApps;
 
     mapping(address => Airline) private airlines;
 
-    mapping(bytes32 => Flight) private flights;
-
-    mapping(address => bool) private authorizedApps;
+    /**
+     * @dev        Count of registered airlines
+     */
+    uint256 private countRegisteredAirlines = 1;
 
     event AirlineExisted(address indexed airline);
 
@@ -34,21 +36,7 @@ contract FlightSuretyData is Ownable, Pausable {
 
     event AirlineDeposit(address indexed airline, uint256 value);
 
-    /**
-     * @dev        Count of registered airlines
-     */
-    uint256 private countRegisteredAirlines = 1;
-
-    /**
-     * @title
-     */
-    struct Airline {
-        bool exists;
-        bool registered;
-        bool funded;
-        AddressSets.AddressSet approvals;
-        uint256 balance;
-    }
+    mapping(bytes32 => Flight) private flights;
 
     /**
      * @title
@@ -56,9 +44,38 @@ contract FlightSuretyData is Ownable, Pausable {
     struct Flight {
         address airline;
         bool registered;
-        uint8 statusCode;
+        FlightStatus statusCode;
         uint256 updatedTimestamp;
     }
+
+    event FlightRegistered(
+        address indexed airline,
+        string flight,
+        uint256 timestamp
+    );
+
+    enum FlightStatus {
+        UNKNOWN,
+        ON_TIME,
+        LATE_AIRLINE,
+        LATE_WEATHER,
+        LATE_TECHNICAL,
+        LATE_OTHER
+    }
+
+    /**
+     * @dev        key - hash of owner and flight key
+     */
+    mapping(bytes32 => Insurance) insurances;
+
+    struct Insurance {
+        bool registered;
+        address owner;
+        bytes32 flightKey;
+        uint256 value;
+    }
+
+    event InsuranceCreated(address indexed owner, bytes32 flightKey);
 
     constructor(address firtsAirline) public {
         _newAirline(firtsAirline);
@@ -161,6 +178,57 @@ contract FlightSuretyData is Ownable, Pausable {
         emit AirlineDeposit(airline, msg.value);
     }
 
+    function newFlight(
+        address airline,
+        string calldata flight,
+        uint256 timestamp
+    ) external requireAuthorizedApp {
+        bytes32 flightKey = getFlightKey(airline, flight, timestamp);
+        require(!flights[flightKey].registered, "Flight is already registered");
+
+        flights[flightKey] = Flight({
+            airline: airline,
+            registered: true,
+            statusCode: FlightStatus.UNKNOWN,
+            updatedTimestamp: block.timestamp
+        });
+
+        emit FlightRegistered(airline, flight, timestamp);
+    }
+
+    function newInsurance(address owner, bytes32 flightKey)
+        external
+        payable
+        requireAuthorizedApp
+    {
+        require(flights[flightKey].registered, "Flight is not registered");
+        bytes32 insuranceKey = getInsuranceKey(owner, flightKey);
+        require(
+            !insurances[insuranceKey].registered,
+            "Insurance is already registered"
+        );
+
+        insurances[insuranceKey] = Insurance({
+            registered: true,
+            owner: owner,
+            flightKey: flightKey,
+            value: msg.value
+        });
+
+        emit InsuranceCreated(owner, flightKey);
+    }
+
+    function isInsuranceRegistered(address owner, bytes32 flightKey)
+        external
+        view
+        requireAuthorizedApp
+        returns (bool)
+    {
+        require(flights[flightKey].registered, "Flight is not registered");
+        bytes32 insuranceKey = getInsuranceKey(owner, flightKey);
+        return insurances[insuranceKey].registered;
+    }
+
     function isAirlineExist(address airline)
         external
         view
@@ -180,7 +248,7 @@ contract FlightSuretyData is Ownable, Pausable {
         return airlines[airline].registered;
     }
 
-    function isAirlineFounded(address airline)
+    function isAirlineFunded(address airline)
         external
         view
         requireAuthorizedApp
@@ -220,22 +288,23 @@ contract FlightSuretyData is Ownable, Pausable {
         return airlines[airline].approvals.containsAddress(approver);
     }
 
-    function getFlight(bytes32 flightKey)
+    function isFlightRegistered(bytes32 flightKey)
         external
         view
         requireAuthorizedApp
-        requireAirlineExist(airline)
-        returns (
-            address airline,
-            bool registered,
-            uint8 statusCode,
-            uint256 updatedTimestamp
-        )
+        returns (bool)
     {
-        airline = flights[flightKey].airline;
-        registered = flights[flightKey].registered;
-        statusCode = flights[flightKey].statusCode;
-        updatedTimestamp = flights[flightKey].updatedTimestamp;
+        return flights[flightKey].registered;
+    }
+
+    function getFlightStatusCode(bytes32 flightKey)
+        external
+        view
+        returns (uint256)
+    {
+        require(flights[flightKey].registered, "Flight is not registered");
+
+        return uint256(flights[flightKey].statusCode);
     }
 
     function getCountRegisteredAirlines()
@@ -253,9 +322,17 @@ contract FlightSuretyData is Ownable, Pausable {
 
     function getFlightKey(
         address airline,
-        string calldata flight,
+        string memory flight,
         uint256 timestamp
-    ) external pure returns (bytes32) {
+    ) public pure returns (bytes32) {
         return keccak256(abi.encodePacked(airline, timestamp, flight));
+    }
+
+    function getInsuranceKey(address owner, bytes32 flightKey)
+        public
+        pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encodePacked(owner, flightKey));
     }
 }
