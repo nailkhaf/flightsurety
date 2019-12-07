@@ -218,6 +218,14 @@ contract FlightSuretyData is Ownable, Pausable {
         emit InsuranceCreated(owner, flightKey);
     }
 
+    function updateFlightStatus(bytes32 flightKey, uint256 statusCode)
+        external
+        requireAuthorizedApp
+    {
+        require(flights[flightKey].registered, "Flight is not registered");
+        flights[flightKey].statusCode = FlightStatus(statusCode);
+    }
+
     function isInsuranceRegistered(address owner, bytes32 flightKey)
         external
         view
