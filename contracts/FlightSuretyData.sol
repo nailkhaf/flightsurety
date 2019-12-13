@@ -9,6 +9,8 @@ contract FlightSuretyData is Ownable, Pausable {
     using SafeMath for uint256;
     using AddressSets for AddressSets.AddressSet;
 
+    event AppAuthorized(address indexed app);
+
     struct Airline {
         bool exists;
         bool registered;
@@ -45,7 +47,6 @@ contract FlightSuretyData is Ownable, Pausable {
         address airline;
         bool registered;
         FlightStatus statusCode;
-        uint256 updatedTimestamp;
     }
 
     event FlightRegistered(
@@ -70,8 +71,8 @@ contract FlightSuretyData is Ownable, Pausable {
 
     struct Insurance {
         bool registered;
-        address owner;
         bytes32 flightKey;
+        address owner;
         uint256 value;
     }
 
@@ -102,9 +103,15 @@ contract FlightSuretyData is Ownable, Pausable {
     function authorizeApp(address app) external onlyOwner {
         require(!authorizedApps[app], "App already authorized");
         authorizedApps[app] = true;
+
+        emit AppAuthorized(app);
     }
 
-    function newAirline(address airline) external requireAuthorizedApp {
+    function newAirline(address airline)
+        external
+        requireAuthorizedApp
+        whenNotPaused
+    {
         require(!airlines[airline].exists, "Airline has already existed");
 
         _newAirline(airline);
@@ -125,6 +132,7 @@ contract FlightSuretyData is Ownable, Pausable {
     function registerAirline(address airline)
         external
         requireAuthorizedApp
+        whenNotPaused
         requireAirlineExist(airline)
     {
         require(
@@ -142,6 +150,7 @@ contract FlightSuretyData is Ownable, Pausable {
         external
         requireAuthorizedApp
         requireAirlineExist(airline)
+        whenNotPaused
     {
         require(!airlines[airline].funded, "Airline has already funded");
 
@@ -154,6 +163,7 @@ contract FlightSuretyData is Ownable, Pausable {
         external
         requireAuthorizedApp
         requireAirlineExist(airline)
+        whenNotPaused
     {
         require(
             !airlines[airline].approvals.containsAddress(approver),
@@ -170,6 +180,7 @@ contract FlightSuretyData is Ownable, Pausable {
         payable
         requireAuthorizedApp
         requireAirlineExist(airline)
+        whenNotPaused
     {
         require(msg.value > 0, "Deposit value must more than 0");
 
@@ -182,27 +193,27 @@ contract FlightSuretyData is Ownable, Pausable {
         address airline,
         string calldata flight,
         uint256 timestamp
-    ) external requireAuthorizedApp {
+    ) external requireAuthorizedApp whenNotPaused {
         bytes32 flightKey = getFlightKey(airline, flight, timestamp);
         require(!flights[flightKey].registered, "Flight is already registered");
 
         flights[flightKey] = Flight({
             airline: airline,
             registered: true,
-            statusCode: FlightStatus.UNKNOWN,
-            updatedTimestamp: block.timestamp
+            statusCode: FlightStatus.UNKNOWN
         });
 
         emit FlightRegistered(airline, flight, timestamp);
     }
 
-    function newInsurance(address owner, bytes32 flightKey)
+    function newInsurance(address _owner, bytes32 _flightKey)
         external
         payable
         requireAuthorizedApp
+        whenNotPaused
     {
-        require(flights[flightKey].registered, "Flight is not registered");
-        bytes32 insuranceKey = getInsuranceKey(owner, flightKey);
+        require(flights[_flightKey].registered, "Flight is not registered");
+        bytes32 insuranceKey = getInsuranceKey(_owner, _flightKey);
         require(
             !insurances[insuranceKey].registered,
             "Insurance is already registered"
@@ -210,17 +221,18 @@ contract FlightSuretyData is Ownable, Pausable {
 
         insurances[insuranceKey] = Insurance({
             registered: true,
-            owner: owner,
-            flightKey: flightKey,
+            flightKey: _flightKey,
+            owner: _owner,
             value: msg.value
         });
 
-        emit InsuranceCreated(owner, flightKey);
+        emit InsuranceCreated(_owner, _flightKey);
     }
 
     function updateFlightStatus(bytes32 flightKey, uint256 statusCode)
         external
         requireAuthorizedApp
+        whenNotPaused
     {
         require(flights[flightKey].registered, "Flight is not registered");
         flights[flightKey].statusCode = FlightStatus(statusCode);

@@ -7,12 +7,14 @@ pragma solidity ^0.5.0;
 // 2018/november/smart-contract-insecurity-bad-arithmetic/
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts/lifecycle/Pausable.sol";
 import "./FlightSuretyData.sol";
 
 /************************************************** */
 /* FlightSurety Smart Contract                      */
 /************************************************** */
-contract FlightSuretyApp {
+contract FlightSuretyApp is Ownable, Pausable {
     using SafeMath for uint256; // Allow SafeMath functions to be called for all
     // uint256 types (similar to "prototype" in Javascript)
 
@@ -37,7 +39,7 @@ contract FlightSuretyApp {
     /**
      * @dev        Register or approve airline
      */
-    function registerAirline(address airline) external {
+    function registerAirline(address airline) whenNotPaused external {
         require(data.isAirlineExist(msg.sender), "Sender must be Airline");
         require(
             data.isAirlineRegistered(msg.sender),
@@ -50,6 +52,8 @@ contract FlightSuretyApp {
             createNewAirline(airline);
         }
 
+
+
         approveAirline(airline);
     }
 
@@ -58,7 +62,7 @@ contract FlightSuretyApp {
      * flights resulting in insurance payouts, the contract should be
      * self-sustaining
      */
-    function fundAirline() external payable {
+    function fundAirline() external payable whenNotPaused {
         require(data.isAirlineExist(msg.sender), "Sender is not Airline");
         require(
             data.isAirlineRegistered(msg.sender),
@@ -80,7 +84,7 @@ contract FlightSuretyApp {
     */
     function registerFlight(string calldata flight, uint256 timestamp)
         external
-        returns (bytes32)
+        whenNotPaused
     {
         require(data.isAirlineExist(msg.sender), "Airline is not exist");
         require(
@@ -97,8 +101,6 @@ contract FlightSuretyApp {
         data.newFlight(msg.sender, flight, timestamp);
 
         emit FlightRegistered(msg.sender, flight, timestamp);
-
-        return flightKey;
     }
 
     /**
@@ -108,7 +110,7 @@ contract FlightSuretyApp {
         address airline,
         string calldata flight,
         uint256 timestamp
-    ) external payable {
+    ) external payable whenNotPaused {
         require(data.isAirlineExist(airline), "Airline is not exist");
         require(data.isAirlineRegistered(airline), "Airline is not registered");
         require(data.isAirlineFunded(airline), "Airline is not funded");
@@ -260,7 +262,7 @@ contract FlightSuretyApp {
         address airline,
         string calldata flight,
         uint256 timestamp
-    ) external {
+    ) external whenNotPaused {
         uint8 index = getRandomIndex(msg.sender);
 
         // Generate a unique key for storing the request
@@ -333,7 +335,7 @@ contract FlightSuretyApp {
     );
 
     // Register an oracle with the contract
-    function registerOracle() external payable {
+    function registerOracle() external payable whenNotPaused {
         // Require registration fee
         require(msg.value >= REGISTRATION_FEE, "Registration fee is required");
 
@@ -361,7 +363,7 @@ contract FlightSuretyApp {
         string calldata flight,
         uint256 timestamp,
         uint8 statusCode
-    ) external {
+    ) external whenNotPaused {
         require(
             (oracles[msg.sender].indexes[0] == index) ||
                 (oracles[msg.sender].indexes[1] == index) ||
