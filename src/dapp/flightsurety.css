@@ -40,3 +40,7 @@ label.form {
 input {
     margin-right: 30px;
 }
+
+.select {
+    width: 30%;
+}

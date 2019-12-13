@@ -1,6 +1,6 @@
+/* global contract */
+
 const Test = require("../config/testConfig.js");
-const BigNumber = require("bignumber.js");
-const assert = require("assert");
 const expect = require("chai").expect;
 
 contract("FlightSurety", async accounts => {
@@ -38,7 +38,7 @@ contract("FlightSurety", async accounts => {
 
   describe("Registration airline", async () => {
     it("Register first four airlines without multi part", async () => {
-      for (account of config.testAddresses.slice(0, 4)) {
+      for (let account of config.testAddresses.slice(0, 4)) {
         let registered = await config.flightSuretyApp.isAirlineRegistered(
           account,
           {from: account}
@@ -130,13 +130,9 @@ contract("FlightSurety", async accounts => {
       const flightName = flight.flightName;
       const timestamp = flight.timestamp;
 
-      const flightKey = await config.flightSuretyApp.registerFlight(
-        flightName,
-        timestamp,
-        {
-          from: airline
-        }
-      );
+      await config.flightSuretyApp.registerFlight(flightName, timestamp, {
+        from: airline
+      });
 
       const registered = await config.flightSuretyApp.isFlightRegistered(
         airline,
