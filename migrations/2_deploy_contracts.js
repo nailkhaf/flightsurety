@@ -1,3 +1,5 @@
+/* global artifacts */
+
 const FlightSuretyApp = artifacts.require("FlightSuretyApp");
 const FlightSuretyData = artifacts.require("FlightSuretyData");
 const fs = require("fs");

@@ -388,10 +388,11 @@ contract FlightSuretyApp is Ownable, Pausable {
         if (
             oracleResponses[key].responses[statusCode].length >= MIN_RESPONSES
         ) {
-            emit FlightStatusInfo(airline, flight, timestamp, statusCode);
 
             // Handle flight status as appropriate
             processFlightStatus(airline, flight, timestamp, statusCode);
+
+            emit FlightStatusInfo(airline, flight, timestamp, statusCode);
         }
     }
 
@@ -431,6 +432,15 @@ contract FlightSuretyApp is Ownable, Pausable {
         }
 
         return random;
+    }
+
+    function getFlightStatusCode(
+        address airline,
+        string calldata flight,
+        uint256 timestamp
+    ) external view returns (uint256) {
+        bytes32 flightKey = data.getFlightKey(airline, flight, timestamp);
+        return data.getFlightStatusCode(flightKey);
     }
 
     // // endregion

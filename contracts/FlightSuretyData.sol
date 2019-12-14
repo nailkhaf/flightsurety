@@ -320,6 +320,7 @@ contract FlightSuretyData is Ownable, Pausable {
     function getFlightStatusCode(bytes32 flightKey)
         external
         view
+        requireAuthorizedApp
         returns (uint256)
     {
         require(flights[flightKey].registered, "Flight is not registered");

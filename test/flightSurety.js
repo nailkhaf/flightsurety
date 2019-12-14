@@ -1,4 +1,4 @@
-/* global contract */
+/* global contract web3 */
 
 const Test = require("../config/testConfig.js");
 const expect = require("chai").expect;
@@ -64,7 +64,7 @@ contract("FlightSurety", async accounts => {
         "Airline is already registered"
       ).to.equal(false);
 
-      for (account of config.testAddresses.slice(0, 3)) {
+      for (let account of config.testAddresses.slice(0, 3)) {
         await config.flightSuretyApp.registerAirline(fifthAirline, {
           from: account
         });
@@ -82,7 +82,7 @@ contract("FlightSurety", async accounts => {
         "Airline is already registered"
       ).to.equal(false);
 
-      for (account of config.testAddresses.slice(0, 3)) {
+      for (let account of config.testAddresses.slice(0, 3)) {
         await config.flightSuretyApp.registerAirline(sixthAirline, {
           from: account
         });
