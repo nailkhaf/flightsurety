@@ -54,6 +54,16 @@ import "./flightsurety.css";
       }
     });
 
+    DOM.elid("withdraw").addEventListener("click", async () => {
+
+      try {
+        await contract.withdraw()
+        alert(`Withdraw success.`);
+      } catch(e) {
+        alert(`Withdraw is failed. ${e.message}`);
+      }
+    });
+
     // User-submitted transaction
     DOM.elid("submite-register-flights").addEventListener("click", async () => {
       const registered = await contract.isAirlineRegistered();

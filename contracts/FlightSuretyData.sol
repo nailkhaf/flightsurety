@@ -79,6 +79,8 @@ contract FlightSuretyData is Ownable, Pausable {
 
     event InsuranceCreated(address indexed owner, bytes32 flightKey);
 
+    mapping(address => uint256) withdrawAccounts;
+
     constructor(address firtsAirline) public {
         _newAirline(firtsAirline);
         airlines[firtsAirline].registered = true;
@@ -240,18 +242,54 @@ contract FlightSuretyData is Ownable, Pausable {
         flights[flightKey].statusCode = FlightStatus(statusCode);
     }
 
-    function payoutInsurance(address owner, bytes32 flightKey) external requireAuthorizedApp {
+    function payoutInsurance(address owner, bytes32 flightKey, uint256 payout)
+        external
+        requireAuthorizedApp
+        whenNotPaused
+    {
         require(flights[flightKey].registered, "Flight is not registered");
         bytes32 insuranceKey = getInsuranceKey(owner, flightKey);
         require(
             insurances[insuranceKey].registered,
             "Insurance is not registered"
         );
-        require(!insurances[insuranceKey].returned, "Insurance is already returned");
+        require(
+            !insurances[insuranceKey].returned,
+            "Insurance is already returned"
+        );
 
         insurances[insuranceKey].returned = true;
+
+        withdrawAccounts[owner] = withdrawAccounts[owner].add(payout);
     }
 
+    function withdraw(address payable owner)
+        external
+        requireAuthorizedApp
+        whenNotPaused
+    {
+        require(withdrawAccounts[owner] != 0, "Nothing to withdraw");
+
+        uint256 amountToWithdraw = withdrawAccounts[owner];
+        withdrawAccounts[owner] = 0;
+
+        owner.transfer(amountToWithdraw);
+    }
+
+    function getInsuranceValue(address owner, bytes32 flightKey)
+        external
+        view
+        requireAuthorizedApp
+        returns (uint256)
+    {
+        require(flights[flightKey].registered, "Flight is not registered");
+        bytes32 insuranceKey = getInsuranceKey(owner, flightKey);
+        require(
+            insurances[insuranceKey].registered,
+            "Insurance is not registered"
+        );
+        return insurances[insuranceKey].value;
+    }
 
     function isInsuranceRegistered(address owner, bytes32 flightKey)
         external

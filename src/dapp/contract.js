@@ -214,6 +214,12 @@ export default class Contract {
     }
   }
 
+  async withdraw() {
+    const passenger = this.passengers[0];
+
+    await this.flightSuretyApp.methods.withdraw().send({from: passenger});
+  }
+
   async payoutInsurance(flight) {
     const passenger = this.passengers[0];
 
@@ -231,12 +237,8 @@ export default class Contract {
     }
 
     await this.flightSuretyApp.methods
-      .payout(
-        flight.airline,
-        flight.name,
-        genOrGetTimestamp()
-      )
-      .send({from: passenger});
+      .payout(flight.airline, flight.name, genOrGetTimestamp())
+      .send({from: passenger, gas: 210000});
   }
 }
 

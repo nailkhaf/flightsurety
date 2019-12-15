@@ -139,19 +139,30 @@ contract FlightSuretyApp is Ownable, Pausable {
         require(data.isAirlineFunded(airline), "Airline is not funded");
         bytes32 flightKey = data.getFlightKey(airline, flight, timestamp);
         require(data.isFlightRegistered(flightKey), "Flight is not registered");
-        require(data.isInsuranceRegistered(msg.sender, flightKey), "Insurance is not registered");
+        require(
+            data.isInsuranceRegistered(msg.sender, flightKey),
+            "Insurance is not registered"
+        );
         require(
             data.getFlightStatusCode(flightKey) != 0,
-            "Fligth is not finished"
+            "Fligth is not finished yet"
         );
         require(
             data.getFlightStatusCode(flightKey) != 1,
             "Fligth finished success"
         );
 
-        data.payoutInsurance(msg.sender, flightKey);
+        uint256 value = data.getInsuranceValue(msg.sender, flightKey);
+
+        uint256 amount = value.mul(3).div(2);
+
+        data.payoutInsurance(msg.sender, flightKey, amount);
 
         emit InsurancePayout(msg.sender, flightKey);
+    }
+
+    function withdraw() external whenNotPaused {
+        data.withdraw(msg.sender);
     }
 
     /**
