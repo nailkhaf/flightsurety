@@ -244,17 +244,17 @@ function createTestFlights(airline) {
   return [
     "SU-6056",
     "SU-6057",
-    // "SU-6058",
-    // "SU-6059",
-    // "SU-8888",
+    "SU-6058",
+    "SU-6059",
+    "SU-8888",
     "5N527",
     "5N528",
-    // "5N529",
-    // "5N530",
+    "5N529",
+    "5N530",
     "DP 414",
-    "DP 415"
-    // "DP 416",
-    // "DP 417"
+    "DP 415",
+    "DP 416",
+    "DP 417"
   ].map(item => {
     return {
       name: item,

@@ -14,7 +14,7 @@
     "server": "rm -rf ./build/server && webpack --config webpack.config.server.js",
     "format": "prettier --write contracts/*.sol && prettier --write test/*.js",
     "migrate:dev": "truffle migrate --network development --reset",
-    "ganache:dev": "ganache-cli -m 'candy maple cake sugar pudding cream honey rich smooth crumble sweet treat' -a 50 -h 0.0.0.0 -g 1 -l 100000000"
+    "ganache:dev": "ganache-cli -m 'candy maple cake sugar pudding cream honey rich smooth crumble sweet treat' -a 50 -h 0.0.0.0 -g 1 -l 100000000 --allowUnlimitedContractSize"
   },
   "author": "Nik Kalyani <nik@kalyani.com> https://www.kalyani.com",
   "devDependencies": {
