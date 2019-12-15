@@ -7,7 +7,10 @@ export default class Contract {
   constructor(network, callback) {
     let config = Config[network];
     this.config = config;
-    this.web3 = new Web3(new Web3.providers.HttpProvider(config.url));
+    // this.web3 = new Web3(new Web3.providers.HttpProvider(config.url));
+    this.web3 = new Web3(
+      new Web3.providers.WebsocketProvider(config.url.replace("http", "ws"))
+    );
     this.flightSuretyApp = new this.web3.eth.Contract(
       FlightSuretyApp.abi,
       config.appAddress
@@ -85,6 +88,15 @@ export default class Contract {
       .send({from: self.owner}, error => {
         callback(error, payload);
       });
+  }
+
+  async listenFlightStatus(callback) {
+    this.flightSuretyApp.events.FlightStatusInfo(
+      {fromBlock: 0},
+      async (err, res) => {
+        callback(err, res);
+      }
+    );
   }
 
   async isAirlineRegistered() {
@@ -177,7 +189,7 @@ export default class Contract {
       .call();
 
     if (registered) {
-      throw Error("Insureance is already registered");
+      throw Error("Insurance is already registered");
     }
 
     await this.flightSuretyApp.methods
@@ -200,6 +212,31 @@ export default class Contract {
     if (!registered) {
       throw Error("Registration insureance is failed");
     }
+  }
+
+  async payoutInsurance(flight) {
+    const passenger = this.passengers[0];
+
+    let registered = await this.flightSuretyApp.methods
+      .isInsuranceRegistered(
+        passenger,
+        flight.airline,
+        flight.name,
+        genOrGetTimestamp()
+      )
+      .call();
+
+    if (!registered) {
+      throw Error("Insurance is not registered");
+    }
+
+    await this.flightSuretyApp.methods
+      .payout(
+        flight.airline,
+        flight.name,
+        genOrGetTimestamp()
+      )
+      .send({from: passenger});
   }
 }
 

@@ -32,6 +32,8 @@ contract FlightSuretyApp is Ownable, Pausable {
 
     event InsuranceCreated(address indexed owner, bytes32 fligthKey);
 
+    event InsurancePayout(address indexed owner, bytes32 fligthKey);
+
     constructor(address payable dataContract) public {
         data = FlightSuretyData(dataContract);
     }
@@ -39,7 +41,7 @@ contract FlightSuretyApp is Ownable, Pausable {
     /**
      * @dev        Register or approve airline
      */
-    function registerAirline(address airline) whenNotPaused external {
+    function registerAirline(address airline) external whenNotPaused {
         require(data.isAirlineExist(msg.sender), "Sender must be Airline");
         require(
             data.isAirlineRegistered(msg.sender),
@@ -51,8 +53,6 @@ contract FlightSuretyApp is Ownable, Pausable {
         if (!exists) {
             createNewAirline(airline);
         }
-
-
 
         approveAirline(airline);
     }
@@ -127,19 +127,32 @@ contract FlightSuretyApp is Ownable, Pausable {
         emit InsuranceCreated(msg.sender, flightKey);
     }
 
-    // /**
-    //  *  @dev Credits payouts to insurees
-    //  */
-    // function creditInsurees() external view {
+    /**
+     *  @dev Transfers eligible payout funds to insuree
+     */
+    function payout(address airline, string calldata flight, uint256 timestamp)
+        external
+        whenNotPaused
+    {
+        require(data.isAirlineExist(airline), "Airline is not exist");
+        require(data.isAirlineRegistered(airline), "Airline is not registered");
+        require(data.isAirlineFunded(airline), "Airline is not funded");
+        bytes32 flightKey = data.getFlightKey(airline, flight, timestamp);
+        require(data.isFlightRegistered(flightKey), "Flight is not registered");
+        require(data.isInsuranceRegistered(msg.sender, flightKey), "Insurance is not registered");
+        require(
+            data.getFlightStatusCode(flightKey) != 0,
+            "Fligth is not finished"
+        );
+        require(
+            data.getFlightStatusCode(flightKey) != 1,
+            "Fligth finished success"
+        );
 
-    // }
+        data.payoutInsurance(msg.sender, flightKey);
 
-    // /**
-    //  *  @dev Transfers eligible payout funds to insuree
-    //  */
-    // function pay() external view {
-
-    // }
+        emit InsurancePayout(msg.sender, flightKey);
+    }
 
     /**
      * @dev        Only existing airline can register a new airline until there
@@ -251,7 +264,7 @@ contract FlightSuretyApp is Ownable, Pausable {
         require(data.isFlightRegistered(flightKey), "Flight doesn't exist");
         require(
             data.getFlightStatusCode(flightKey) == 0,
-            "Fligth has already status"
+            "Flight has already status"
         );
 
         data.updateFlightStatus(flightKey, uint256(statusCode));
@@ -336,12 +349,19 @@ contract FlightSuretyApp is Ownable, Pausable {
 
     // Register an oracle with the contract
     function registerOracle() external payable whenNotPaused {
+        require(
+            !oracles[msg.sender].isRegistered,
+            "Oracle is already registered"
+        );
+
         // Require registration fee
         require(msg.value >= REGISTRATION_FEE, "Registration fee is required");
 
         uint8[3] memory indexes = generateIndexes(msg.sender);
 
-        oracles[msg.sender] = Oracle({isRegistered: true, indexes: indexes});
+        Oracle memory oracle = Oracle({isRegistered: true, indexes: indexes});
+
+        oracles[msg.sender] = oracle;
     }
 
     function getMyIndexes() external view returns (uint8[3] memory) {
@@ -388,7 +408,6 @@ contract FlightSuretyApp is Ownable, Pausable {
         if (
             oracleResponses[key].responses[statusCode].length >= MIN_RESPONSES
         ) {
-
             // Handle flight status as appropriate
             processFlightStatus(airline, flight, timestamp, statusCode);
 
@@ -397,7 +416,10 @@ contract FlightSuretyApp is Ownable, Pausable {
     }
 
     // Returns array of three non-duplicating integers from 0-9
-    function generateIndexes(address account) internal returns (uint8[3] memory) {
+    function generateIndexes(address account)
+        internal
+        returns (uint8[3] memory)
+    {
         uint8[3] memory indexes;
         indexes[0] = getRandomIndex(account);
 
@@ -441,6 +463,10 @@ contract FlightSuretyApp is Ownable, Pausable {
     ) external view returns (uint256) {
         bytes32 flightKey = data.getFlightKey(airline, flight, timestamp);
         return data.getFlightStatusCode(flightKey);
+    }
+
+    function isOracleRegistered(address oracle) external view returns (bool) {
+        return oracles[oracle].isRegistered;
     }
 
     // // endregion

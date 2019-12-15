@@ -8,7 +8,7 @@ module.exports = function(deployer, network, accounts) {
   const firstAirline = accounts[0];
   deployer.deploy(FlightSuretyData, firstAirline).then(() => {
     return deployer
-      .deploy(FlightSuretyApp, FlightSuretyData.address)
+      .deploy(FlightSuretyApp, FlightSuretyData.address, {gas: 100000000})
       .then(() => {
         let config = {
           localhost: {

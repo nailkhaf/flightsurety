@@ -14,7 +14,7 @@
     "server": "rm -rf ./build/server && webpack --config webpack.config.server.js",
     "format": "prettier --write contracts/*.sol && prettier --write test/*.js",
     "migrate:dev": "truffle migrate --network development --reset",
-    "ganache:dev": "ganache-cli -m 'candy maple cake sugar pudding cream honey rich smooth crumble sweet treat' -a 50 -h 0.0.0.0"
+    "ganache:dev": "ganache-cli -m 'candy maple cake sugar pudding cream honey rich smooth crumble sweet treat' -a 50 -h 0.0.0.0 -g 1 -l 100000000"
   },
   "author": "Nik Kalyani <nik@kalyani.com> https://www.kalyani.com",
   "devDependencies": {
@@ -46,7 +46,6 @@
     "style-loader": "^0.23.1",
     "superstatic": "6.0.3",
     "truffle": "^5.1.1",
-    "truffle-hdwallet-provider": "1.0.2",
     "truffle-plugin-solhint": "0.0.6",
     "web3": "^1.2.4",
     "webpack": "^4.41.0",
@@ -54,5 +53,7 @@
     "webpack-dev-server": "3.9.0",
     "webpack-node-externals": "1.7.2"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@truffle/hdwallet-provider": "^1.0.27"
+  }
 }

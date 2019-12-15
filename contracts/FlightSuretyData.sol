@@ -74,6 +74,7 @@ contract FlightSuretyData is Ownable, Pausable {
         bytes32 flightKey;
         address owner;
         uint256 value;
+        bool returned;
     }
 
     event InsuranceCreated(address indexed owner, bytes32 flightKey);
@@ -223,7 +224,8 @@ contract FlightSuretyData is Ownable, Pausable {
             registered: true,
             flightKey: _flightKey,
             owner: _owner,
-            value: msg.value
+            value: msg.value,
+            returned: false
         });
 
         emit InsuranceCreated(_owner, _flightKey);
@@ -237,6 +239,19 @@ contract FlightSuretyData is Ownable, Pausable {
         require(flights[flightKey].registered, "Flight is not registered");
         flights[flightKey].statusCode = FlightStatus(statusCode);
     }
+
+    function payoutInsurance(address owner, bytes32 flightKey) external requireAuthorizedApp {
+        require(flights[flightKey].registered, "Flight is not registered");
+        bytes32 insuranceKey = getInsuranceKey(owner, flightKey);
+        require(
+            insurances[insuranceKey].registered,
+            "Insurance is not registered"
+        );
+        require(!insurances[insuranceKey].returned, "Insurance is already returned");
+
+        insurances[insuranceKey].returned = true;
+    }
+
 
     function isInsuranceRegistered(address owner, bytes32 flightKey)
         external

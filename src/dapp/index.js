@@ -3,7 +3,6 @@ import Contract from "./contract";
 import "./flightsurety.css";
 
 (async () => {
-  let result = null;
 
   let contract = new Contract("localhost", async () => {
     // Read transaction
@@ -43,6 +42,18 @@ import "./flightsurety.css";
       }
     });
 
+    DOM.elid("payout-insurance").addEventListener("click", async () => {
+      const option = DOM.elid("flight-number-selector").value;
+      const flight = contract.getFlights()[parseInt(option)];
+
+      try {
+        await contract.payoutInsurance(flight)
+        alert(`Payout insurance success.`);
+      } catch(e) {
+        alert(`Payout insurance is failed. ${e.message}`);
+      }
+    });
+
     // User-submitted transaction
     DOM.elid("submite-register-flights").addEventListener("click", async () => {
       const registered = await contract.isAirlineRegistered();
@@ -65,6 +76,20 @@ import "./flightsurety.css";
     await contract.authorizeApp();
 
     displayFlights(DOM.elid("flight-number-selector"), contract.getFlights());
+
+    setTimeout(async () => {
+      await contract.listenFlightStatus((err, res) => {
+
+        display("Oracles", "Listen oracles", [
+          {
+            label: "Flight Status Info",
+            error: err,
+            value: `${res.returnValues.flight}:${res.returnValues.status}`
+          }
+        ]);
+      })
+    }, 1000)
+
   });
 })();
 
