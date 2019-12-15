@@ -1,3 +1,5 @@
+/* global artifacts */
+
 const FlightSuretyApp = artifacts.require("FlightSuretyApp")
 const FlightSuretyData = artifacts.require("FlightSuretyData")
 const BigNumber = require('bignumber.js')
@@ -14,7 +16,7 @@ const Config = async function(accounts) {
     let firstAirline = accounts[1]
 
     let flightSuretyData = await FlightSuretyData.new(firstAirline)
-    let flightSuretyApp = await FlightSuretyApp.new(flightSuretyData.address)
+    let flightSuretyApp = await FlightSuretyApp.new(flightSuretyData.address, {gas: 100000000})
 
     return {
         owner: owner,

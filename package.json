@@ -8,10 +8,10 @@
   "repository": "https://github.com/techbubble/flightsurety",
   "license": "MIT",
   "scripts": {
-    "test": "truffle test ./test/flightSurety.js",
+    "test": "truffle test --network development",
     "dapp": "webpack-dev-server --mode development --config webpack.config.dapp.js",
     "dapp:prod": "webpack --mode production  --config webpack.config.dapp.js",
-    "server": "rm -rf ./build/server && webpack --config webpack.config.server.js",
+    "server": "bash start_servers.sh",
     "format": "prettier --write contracts/*.sol && prettier --write test/*.js",
     "migrate:dev": "truffle migrate --network development --reset",
     "ganache:dev": "ganache-cli -m 'candy maple cake sugar pudding cream honey rich smooth crumble sweet treat' -a 50 -h 0.0.0.0 -g 1 -l 100000000 --allowUnlimitedContractSize"
