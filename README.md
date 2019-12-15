@@ -66,51 +66,29 @@ the paid for the insurance
 
 * Dapp webapp in `./web-app`
 
-## Install
+## How to run
 
-This repository contains Smart Contract code in Solidity (using Truffle), tests (also using Truffle), dApp scaffolding (using HTML, CSS and JS) and server app scaffolding.
+* Launch app
 
-To install, download or clone the repo, then:
+`npm i` - install dependencies
 
-`npm install`
-`truffle compile`
+`npm run ganache:dev` - start ganache testnet
 
-## Develop Client
+`npm run migrate:dev` - compile and deploy contracts to testnet
 
-To run truffle tests:
+`npm run dapp` - launch web dapp
 
-`truffle test ./test/flightSurety.js`
-`truffle test ./test/oracles.js`
+`npm run server` - run oracle servers in background. Don't forget stop them!
 
-To use the dapp:
+* Launch dapp in the browser on `http://localhost:8000`
 
-`truffle migrate`
-`npm run dapp`
+* Create test flights, click on `Register` button
 
-To view dapp:
+* Choose flight and buy insurance
 
-`http://localhost:8000`
+* Submit to oracles the flight
 
-## Develop Server
+* Try payout your money if flight was not in time
 
-`npm run server`
-`truffle test ./test/oracles.js`
+* Withdraw your ether
 
-## Deploy
-
-To build dapp for prod:
-`npm run dapp:prod`
-
-Deploy the contents of the ./dapp folder
-
-
-## Resources
-
-* [How does Ethereum work anyway?](https://medium.com/@preethikasireddy/how-does-ethereum-work-anyway-22d1df506369)
-* [BIP39 Mnemonic Generator](https://iancoleman.io/bip39/)
-* [Truffle Framework](http://truffleframework.com/)
-* [Ganache Local Blockchain](http://truffleframework.com/ganache/)
-* [Remix Solidity IDE](https://remix.ethereum.org/)
-* [Solidity Language Reference](http://solidity.readthedocs.io/en/v0.4.24/)
-* [Ethereum Blockchain Explorer](https://etherscan.io/)
-* [Web3Js Reference](https://github.com/ethereum/wiki/wiki/JavaScript-API)
